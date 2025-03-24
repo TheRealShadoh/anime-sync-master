@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Anime, SeasonData, Season, AutoRule } from '@/lib/types';
 import { getCurrentSeasonAnime, getSeasonalAnime, getNextSeasonAnime, applyAutoRules, fetchMoreAnime, getMalConfig } from '@/lib/api';
 import { toast } from 'sonner';
@@ -21,7 +21,7 @@ export const useAnimeList = () => {
   }, []);
 
   // Load current season anime
-  const loadCurrentSeason = async () => {
+  const loadCurrentSeason = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getCurrentSeasonAnime();
@@ -53,10 +53,10 @@ export const useAnimeList = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [malConnected, selectedAnime]);
 
   // Load next season anime
-  const loadNextSeason = async () => {
+  const loadNextSeason = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getNextSeasonAnime();
@@ -88,7 +88,7 @@ export const useAnimeList = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [malConnected, selectedAnime]);
 
   // Load specific season anime
   const loadSeason = async (season: Season, year: number) => {
