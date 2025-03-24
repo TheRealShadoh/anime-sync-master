@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -35,6 +36,38 @@ npm i
 # Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Docker Support
+
+This project can be run using Docker. Make sure you have Docker and Docker Compose installed on your machine.
+
+### Building and running with Docker Compose
+
+```sh
+# Build and start the container
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the container
+docker-compose down
+```
+
+### Building and running with Docker directly
+
+```sh
+# Build the Docker image
+docker build -t anime-sync-master .
+
+# Run the container
+docker run -p 8080:80 -d --name anime-sync-master anime-sync-master
+
+# Stop the container
+docker stop anime-sync-master
+```
+
+The app will be available at http://localhost:8080
 
 **Edit a file directly in GitHub**
 
