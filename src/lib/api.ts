@@ -1,4 +1,3 @@
-
 import { Anime, Season, SeasonData, SonarrConfig, AutoRule } from "./types";
 import { toast } from "sonner";
 
@@ -314,4 +313,99 @@ export const applyAutoRules = (animeList: Anime[]): Anime[] => {
     
     return anime;
   });
+};
+
+// MAL API integration
+let malConfig = {
+  clientId: "",
+  connected: false
+};
+
+// Get MAL configuration
+export const getMalConfig = () => {
+  const savedConfig = localStorage.getItem("malConfig");
+  if (savedConfig) {
+    malConfig = JSON.parse(savedConfig);
+  }
+  return malConfig;
+};
+
+// Save MAL configuration
+export const saveMalConfig = async (config: { clientId: string, connected: boolean }): Promise<boolean> => {
+  try {
+    // In a real implementation, validate the connection with MAL API
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // For demo purposes, just save the config and assume it works
+    malConfig = {
+      ...config,
+      connected: true
+    };
+    
+    localStorage.setItem("malConfig", JSON.stringify(malConfig));
+    return true;
+  } catch (error) {
+    console.error("Error saving MAL config:", error);
+    return false;
+  }
+};
+
+// Get more anime from MAL API
+export const fetchMoreAnime = async (season: Season, year: number): Promise<Anime[]> => {
+  try {
+    if (!malConfig.connected || !malConfig.clientId) {
+      return [];
+    }
+    
+    // In a real implementation, call the MAL API
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // For demo purposes, generate additional mock anime
+    const additionalAnime: Anime[] = [
+      {
+        id: 101,
+        title: "New Anime Title 1",
+        image: "https://cdn.myanimelist.net/images/anime/1000/110531.jpg",
+        synopsis: "Additional anime from MAL API.",
+        score: 8.3,
+        season,
+        year,
+        status: "Currently Airing",
+        genres: ["Action", "Adventure"],
+        studios: ["A-1 Pictures"],
+        episodes: 12,
+      },
+      {
+        id: 102,
+        title: "New Anime Title 2",
+        image: "https://cdn.myanimelist.net/images/anime/1000/113613.jpg",
+        synopsis: "Another additional anime from MAL API.",
+        score: 7.9,
+        season,
+        year,
+        status: "Currently Airing",
+        genres: ["Comedy", "Romance"],
+        studios: ["Madhouse"],
+        episodes: 13,
+      },
+      {
+        id: 103,
+        title: "New Anime Title 3",
+        image: "https://cdn.myanimelist.net/images/anime/1908/120036.jpg",
+        synopsis: "One more additional anime from MAL API.",
+        score: 8.7,
+        season,
+        year,
+        status: "Currently Airing",
+        genres: ["Mystery", "Supernatural"],
+        studios: ["MAPPA"],
+        episodes: 24,
+      },
+    ];
+    
+    return additionalAnime;
+  } catch (error) {
+    console.error("Error fetching more anime:", error);
+    return [];
+  }
 };

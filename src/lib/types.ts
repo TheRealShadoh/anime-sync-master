@@ -36,6 +36,12 @@ export interface SonarrConfig {
   connected: boolean;
 }
 
+// MAL API Types
+export interface MalConfig {
+  clientId: string;
+  connected: boolean;
+}
+
 // Auto-Selection Rules
 export interface AutoRule {
   id: string;

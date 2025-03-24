@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAnimeList } from '@/hooks/useAnimeList';
 import AnimeCard from './AnimeCard';
@@ -8,7 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Anime } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Star, Check, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const SeasonBrowser: React.FC = () => {
   const { 

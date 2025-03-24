@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Anime, SeasonData, Season, AutoRule } from '@/lib/types';
-import { getCurrentSeasonAnime, getSeasonalAnime, getNextSeasonAnime, applyAutoRules } from '@/lib/api';
+import { getCurrentSeasonAnime, getSeasonalAnime, getNextSeasonAnime, applyAutoRules, fetchMoreAnime, getMalConfig } from '@/lib/api';
 import { toast } from 'sonner';
 
 export const useAnimeList = () => {
@@ -9,9 +9,13 @@ export const useAnimeList = () => {
   const [nextSeason, setNextSeason] = useState<SeasonData | null>(null);
   const [selectedAnime, setSelectedAnime] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const [malConnected, setMalConnected] = useState(false);
 
-  // Load current and next season on mount
+  // Check MAL connection and load current and next season on mount
   useEffect(() => {
+    const malConfig = getMalConfig();
+    setMalConnected(malConfig.connected);
+    
     loadCurrentSeason();
     loadNextSeason();
   }, []);
@@ -21,6 +25,13 @@ export const useAnimeList = () => {
     setIsLoading(true);
     try {
       const data = await getCurrentSeasonAnime();
+      
+      // If MAL is connected, fetch additional anime
+      if (malConnected) {
+        const additionalAnime = await fetchMoreAnime(data.season, data.year);
+        data.anime = [...data.anime, ...additionalAnime];
+      }
+      
       // Apply auto-selection rules
       const processedData = {
         ...data,
@@ -49,6 +60,13 @@ export const useAnimeList = () => {
     setIsLoading(true);
     try {
       const data = await getNextSeasonAnime();
+      
+      // If MAL is connected, fetch additional anime
+      if (malConnected) {
+        const additionalAnime = await fetchMoreAnime(data.season, data.year);
+        data.anime = [...data.anime, ...additionalAnime];
+      }
+      
       // Apply auto-selection rules
       const processedData = {
         ...data,
@@ -164,6 +182,7 @@ export const useAnimeList = () => {
     nextSeason,
     isLoading,
     selectedAnime: selectedAnime,
+    malConnected,
     loadCurrentSeason,
     loadNextSeason,
     loadSeason,
