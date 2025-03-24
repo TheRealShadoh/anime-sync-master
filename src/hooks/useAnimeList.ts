@@ -26,7 +26,7 @@ export const useAnimeList = () => {
     try {
       const data = await getCurrentSeasonAnime();
       
-      // If MAL is connected, fetch additional anime
+      // If MAL is connected, fetch additional authorized anime
       if (malConnected) {
         const additionalAnime = await fetchMoreAnime(data.season, data.year);
         data.anime = [...data.anime, ...additionalAnime];
@@ -61,7 +61,7 @@ export const useAnimeList = () => {
     try {
       const data = await getNextSeasonAnime();
       
-      // If MAL is connected, fetch additional anime
+      // If MAL is connected, fetch additional authorized anime
       if (malConnected) {
         const additionalAnime = await fetchMoreAnime(data.season, data.year);
         data.anime = [...data.anime, ...additionalAnime];

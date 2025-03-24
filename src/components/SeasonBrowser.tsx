@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAnimeList } from '@/hooks/useAnimeList';
 import AnimeCard from './AnimeCard';
@@ -57,8 +58,22 @@ const SeasonBrowser: React.FC = () => {
         >
           <div className="flex justify-between items-center mb-4">
             <TabsList>
-              <TabsTrigger value="current">Current Season</TabsTrigger>
-              <TabsTrigger value="next">Next Season</TabsTrigger>
+              <TabsTrigger value="current">
+                Current Season 
+                {currentSeason?.anime && (
+                  <span className="ml-2 text-xs bg-muted-foreground/20 px-2 py-0.5 rounded-full">
+                    {currentSeason.anime.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="next">
+                Next Season
+                {nextSeason?.anime && (
+                  <span className="ml-2 text-xs bg-muted-foreground/20 px-2 py-0.5 rounded-full">
+                    {nextSeason.anime.length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
             
             <Button
