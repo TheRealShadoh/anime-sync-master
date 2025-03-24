@@ -1,3 +1,4 @@
+
 import { Anime, Season, SeasonData, SonarrConfig, AutoRule } from "./types";
 import { toast } from "sonner";
 
@@ -573,94 +574,4 @@ export const fetchMoreAnime = async (season: Season, year: number): Promise<Anim
     console.error("Error fetching authorized anime:", error);
     return [];
   }
-};
-
-// Auto-selection rules
-let savedRules: AutoRule[] = [];
-
-// Get saved rules
-export const getAutoRules = (): AutoRule[] => {
-  const savedRulesString = localStorage.getItem("autoRules");
-  if (savedRulesString) {
-    savedRules = JSON.parse(savedRulesString);
-  }
-  return savedRules;
-};
-
-// Save auto-selection rule
-export const saveAutoRule = (rule: AutoRule): void => {
-  const rules = getAutoRules();
-  const existingRuleIndex = rules.findIndex(r => r.id === rule.id);
-  
-  if (existingRuleIndex >= 0) {
-    rules[existingRuleIndex] = rule;
-  } else {
-    rules.push(rule);
-  }
-  
-  localStorage.setItem("autoRules", JSON.stringify(rules));
-  savedRules = rules;
-  toast.success(`Rule "${rule.name}" saved`);
-};
-
-// Delete auto-selection rule
-export const deleteAutoRule = (ruleId: string): void => {
-  const rules = getAutoRules();
-  const filteredRules = rules.filter(r => r.id !== ruleId);
-  
-  localStorage.setItem("autoRules", JSON.stringify(filteredRules));
-  savedRules = filteredRules;
-  toast.success("Rule deleted");
-};
-
-// Apply auto-selection rules to anime list
-export const applyAutoRules = (animeList: Anime[]): Anime[] => {
-  const rules = getAutoRules().filter(r => r.enabled);
-  
-  if (rules.length === 0) return animeList;
-  
-  return animeList.map(anime => {
-    // Check each rule against the anime
-    for (const rule of rules) {
-      // Assumes all conditions must match (AND logic)
-      const allConditionsMatch = rule.conditions.every(condition => {
-        switch (condition.field) {
-          case 'genre':
-            return anime.genres.some(genre => 
-              condition.operator === 'contains' 
-                ? genre.toLowerCase().includes(String(condition.value).toLowerCase())
-                : genre.toLowerCase() === String(condition.value).toLowerCase()
-            );
-          case 'studio':
-            return anime.studios?.some(studio => 
-              condition.operator === 'contains' 
-                ? studio.toLowerCase().includes(String(condition.value).toLowerCase())
-                : studio.toLowerCase() === String(condition.value).toLowerCase()
-            ) || false;
-          case 'score':
-            if (!anime.score) return false;
-            switch (condition.operator) {
-              case 'greater': return anime.score > Number(condition.value);
-              case 'less': return anime.score < Number(condition.value);
-              case 'equals': return anime.score === Number(condition.value);
-              default: return false;
-            }
-          case 'title':
-            return condition.operator === 'contains' 
-              ? anime.title.toLowerCase().includes(String(condition.value).toLowerCase())
-              : condition.operator === 'matches' 
-                ? new RegExp(String(condition.value), 'i').test(anime.title)
-                : anime.title.toLowerCase() === String(condition.value).toLowerCase();
-          default:
-            return false;
-        }
-      });
-      
-      if (allConditionsMatch) {
-        return { ...anime, selected: true };
-      }
-    }
-    
-    return anime;
-  });
 };
