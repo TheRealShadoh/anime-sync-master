@@ -74,14 +74,14 @@ const AnimeFilter: React.FC<AnimeFilterProps> = ({ animeList, onFiltersChange })
   const setYear = (year: string) => {
     setActiveFilters(prev => ({
       ...prev,
-      year: year ? parseInt(year) : undefined
+      year: year === "any" ? undefined : parseInt(year)
     }));
   };
 
   const setScoreAbove = (score: string) => {
     setActiveFilters(prev => ({
       ...prev,
-      scoreAbove: score ? parseFloat(score) : undefined
+      scoreAbove: score === "any" ? undefined : parseFloat(score)
     }));
   };
 
@@ -205,12 +205,12 @@ const AnimeFilter: React.FC<AnimeFilterProps> = ({ animeList, onFiltersChange })
           </DropdownMenu>
           
           {/* Year Filter */}
-          <Select value={activeFilters.year?.toString() || ''} onValueChange={setYear}>
+          <Select value={activeFilters.year?.toString() || 'any'} onValueChange={setYear}>
             <SelectTrigger className="w-[110px] h-9">
               <SelectValue placeholder="Year" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any Year</SelectItem>
+              <SelectItem value="any">Any Year</SelectItem>
               {allYears.map(year => (
                 <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
               ))}
@@ -218,12 +218,12 @@ const AnimeFilter: React.FC<AnimeFilterProps> = ({ animeList, onFiltersChange })
           </Select>
           
           {/* Score Filter */}
-          <Select value={activeFilters.scoreAbove?.toString() || ''} onValueChange={setScoreAbove}>
+          <Select value={activeFilters.scoreAbove?.toString() || 'any'} onValueChange={setScoreAbove}>
             <SelectTrigger className="w-[110px] h-9">
               <SelectValue placeholder="Min Score" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any Score</SelectItem>
+              <SelectItem value="any">Any Score</SelectItem>
               <SelectItem value="7">7+</SelectItem>
               <SelectItem value="7.5">7.5+</SelectItem>
               <SelectItem value="8">8+</SelectItem>
