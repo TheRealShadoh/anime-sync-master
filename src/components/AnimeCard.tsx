@@ -12,15 +12,22 @@ interface AnimeCardProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onClick?: () => void;
+  inSonarr?: boolean;
+  isPending?: boolean;
 }
 
 const AnimeCard: React.FC<AnimeCardProps> = ({ 
   anime, 
   isSelected, 
   onToggleSelect,
-  onClick 
+  onClick,
+  inSonarr = false,
+  isPending: externalIsPending
 }) => {
-  const { addToSonarr, isPending, isConnected } = useSonarr();
+  const { addToSonarr, isPending: sonarrIsPending, isConnected } = useSonarr();
+  
+  // Use external isPending if provided, otherwise use internal state
+  const isPending = externalIsPending !== undefined ? externalIsPending : sonarrIsPending(anime.id);
 
   const handleAddToSonarr = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,20 +83,30 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
           )}
         </Button>
         
-        {isConnected && (
+        {isConnected && !inSonarr && (
           <Button
             variant="outline"
             size="icon"
             className="absolute bottom-2 right-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-white/30 h-8 w-8"
             onClick={handleAddToSonarr}
-            disabled={isPending(anime.id)}
+            disabled={isPending}
           >
-            {isPending(anime.id) ? (
+            {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Play className="h-4 w-4" />
             )}
           </Button>
+        )}
+        
+        {inSonarr && (
+          <Badge 
+            variant="secondary" 
+            className="absolute bottom-2 right-2 backdrop-blur-sm bg-green-500/80 text-white border-0 flex items-center gap-1"
+          >
+            <Check className="h-3 w-3" />
+            In Sonarr
+          </Badge>
         )}
       </div>
       
