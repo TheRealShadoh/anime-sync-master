@@ -34,6 +34,86 @@ export interface SonarrConfig {
   url: string;
   apiKey: string;
   connected: boolean;
+  defaultRootFolder?: string;
+  rootFolders?: SonarrRootFolder[];
+}
+
+export interface SonarrRootFolder {
+  id: number;
+  path: string;
+  accessible: boolean;
+  freeSpace?: number;
+  totalSpace?: number;
+  unmappedFolders: Array<{
+    name: string;
+    path: string;
+  }>;
+}
+
+export interface SonarrSeries {
+  id: number;
+  title: string;
+  titleSlug: string;
+  alternateTitles: Array<{
+    title: string;
+    seasonNumber?: number;
+  }>;
+  sortTitle: string;
+  status: string;
+  overview?: string;
+  network?: string;
+  airTime?: string;
+  monitored: boolean;
+  seasonFolder: boolean;
+  path: string;
+  statistics: {
+    seasonCount: number;
+    episodeFileCount: number;
+    episodeCount: number;
+    totalEpisodeCount: number;
+    sizeOnDisk: number;
+    percentOfEpisodes: number;
+  };
+  images: Array<{
+    coverType: string;
+    url: string;
+  }>;
+  seasons: Array<{
+    seasonNumber: number;
+    monitored: boolean;
+    statistics: {
+      episodeFileCount: number;
+      episodeCount: number;
+      totalEpisodeCount: number;
+      sizeOnDisk: number;
+      percentOfEpisodes: number;
+    };
+  }>;
+}
+
+export interface SonarrSeriesLookup {
+  title: string;
+  sortTitle: string;
+  status: string;
+  overview?: string;
+  network?: string;
+  airTime?: string;
+  images: Array<{
+    coverType: string;
+    url: string;
+  }>;
+  remotePoster?: string;
+  seasons: Array<{
+    seasonNumber: number;
+    monitored: boolean;
+  }>;
+  year: number;
+  tvdbId: number;
+  titleSlug: string;
+  alternateTitles?: Array<{
+    title: string;
+    seasonNumber?: number;
+  }>;
 }
 
 // MAL API Types

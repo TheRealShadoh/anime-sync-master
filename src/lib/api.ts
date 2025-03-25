@@ -1,5 +1,5 @@
 
-import { Anime, Season, SeasonData, SonarrConfig, AutoRule, MalConfig } from "./types";
+import { Anime, Season, SeasonData, SonarrConfig, AutoRule, MalConfig, SonarrRootFolder, SonarrSeries, SonarrSeriesLookup } from "./types";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -145,49 +145,277 @@ let sonarrConfig: SonarrConfig = {
   connected: false
 };
 
-// Save Sonarr configuration
-export const saveSonarrConfig = async (config: SonarrConfig): Promise<boolean> => {
+// Test Sonarr connection
+export const testSonarrConnection = async (url: string, apiKey: string): Promise<boolean> => {
   try {
-    // In a real implementation, validate the connection with Sonarr
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const response = await axios.get(`${url}/api/v3/system/status`, {
+      headers: {
+        'X-Api-Key': apiKey,
+      },
+    });
     
-    // For demo purposes, just save the config and assume it works
-    sonarrConfig = {
-      ...config,
-      connected: true
-    };
-    
-    localStorage.setItem("sonarrConfig", JSON.stringify(sonarrConfig));
-    toast.success("Successfully connected to Sonarr");
-    return true;
+    if (response.status === 200) {
+      toast.success('Successfully connected to Sonarr');
+      return true;
+    } else {
+      toast.error('Failed to connect to Sonarr');
+      return false;
+    }
   } catch (error) {
-    console.error("Error saving Sonarr config:", error);
-    toast.error("Failed to connect to Sonarr");
+    console.error('Error testing Sonarr connection:', error);
+    toast.error('Failed to connect to Sonarr');
     return false;
   }
 };
 
-// Get Sonarr configuration
+// Save Sonarr configuration
+export const saveSonarrConfig = async (config: SonarrConfig): Promise<boolean> => {
+  try {
+    // Test connection first
+    const isConnected = await testSonarrConnection(config.url, config.apiKey);
+    if (!isConnected) {
+      return false;
+    }
+
+    // Get root folders
+    const rootFolders = await getSonarrRootFolders();
+    
+    // Save configuration with root folders
+    sonarrConfig = {
+      ...config,
+      connected: true,
+      rootFolders: rootFolders
+    };
+    
+    localStorage.setItem('sonarrConfig', JSON.stringify(sonarrConfig));
+    return true;
+  } catch (error) {
+    console.error('Error saving Sonarr config:', error);
+    toast.error('Failed to save Sonarr configuration');
+    return false;
+  }
+};
+
+// Sonarr API Functions
+
+// Get root folders from Sonarr
+export const getSonarrRootFolders = async (): Promise<SonarrRootFolder[]> => {
+  try {
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    const response = await axios.get(`${config.url}/api/v3/rootfolder`, {
+      headers: {
+        'X-Api-Key': config.apiKey,
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting root folders:', error);
+    toast.error(`Failed to get root folders: ${error.message}`);
+    return [];
+  }
+};
+
+// Search for series in Sonarr
+export const searchSonarrSeries = async (searchTerm: string): Promise<SonarrSeriesLookup[]> => {
+  try {
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    const response = await axios.get(`${config.url}/api/v3/series/lookup`, {
+      headers: {
+        'X-Api-Key': config.apiKey,
+      },
+      params: {
+        term: searchTerm
+      }
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error searching series:', error);
+    toast.error(`Failed to search series: ${error.message}`);
+    return [];
+  }
+};
+
+// Get all series from Sonarr
+export const getAllSonarrSeries = async (): Promise<SonarrSeries[]> => {
+  try {
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    const response = await axios.get(`${config.url}/api/v3/series`, {
+      headers: {
+        'X-Api-Key': config.apiKey,
+      }
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting series:', error);
+    toast.error(`Failed to get series: ${error.message}`);
+    return [];
+  }
+};
+
+// Get series by ID
+export const getSonarrSeriesById = async (id: number): Promise<SonarrSeries | null> => {
+  try {
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    const response = await axios.get(`${config.url}/api/v3/series/${id}`, {
+      headers: {
+        'X-Api-Key': config.apiKey,
+      }
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting series by ID:', error);
+    toast.error(`Failed to get series details: ${error.message}`);
+    return null;
+  }
+};
+
+// Sonarr configuration management
 export const getSonarrConfig = (): SonarrConfig => {
   const savedConfig = localStorage.getItem("sonarrConfig");
   if (savedConfig) {
     sonarrConfig = JSON.parse(savedConfig);
+    // Also load default root folder if saved
+    const defaultRootFolder = localStorage.getItem("defaultRootFolder");
+    if (defaultRootFolder) {
+      sonarrConfig.defaultRootFolder = defaultRootFolder;
+    }
   }
   return sonarrConfig;
 };
 
-// Add anime to Sonarr
-export const addAnimeToSonarr = async (anime: Anime): Promise<boolean> => {
+// Set default root folder
+export const setDefaultRootFolder = (path: string): void => {
+  localStorage.setItem("defaultRootFolder", path);
+  sonarrConfig.defaultRootFolder = path;
+  toast.success('Default root folder updated');
+};
+
+// Selected anime storage
+let selectedAnime: Anime[] = [];
+
+// Get selected anime
+export const getSelectedAnime = (): Anime[] => {
+  return selectedAnime;
+};
+
+// Toggle anime selection
+export const toggleAnimeSelection = (anime: Anime): void => {
+  const index = selectedAnime.findIndex(a => a.id === anime.id);
+  if (index >= 0) {
+    selectedAnime = selectedAnime.filter(a => a.id !== anime.id);
+  } else {
+    selectedAnime.push({...anime, selected: true});
+  }
+};
+
+// Clear all selections
+export const clearAnimeSelections = (): void => {
+  selectedAnime = [];
+};
+
+// Add multiple selected anime to Sonarr
+export const addSelectedAnimeToSonarr = async (rootFolderPath?: string): Promise<boolean> => {
   try {
-    // In a real implementation, call the Sonarr API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, just pretend it worked
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    const selected = getSelectedAnime();
+    if (selected.length === 0) {
+      throw new Error('No anime selected');
+    }
+
+    const results = await Promise.all(
+      selected.map(anime => addAnimeToSonarr(anime, rootFolderPath))
+    );
+
+    const successCount = results.filter(Boolean).length;
+    if (successCount === selected.length) {
+      toast.success(`Successfully added ${successCount} anime to Sonarr`);
+      clearAnimeSelections();
+      return true;
+    } else {
+      toast.error(`Added ${successCount}/${selected.length} anime to Sonarr`);
+      return false;
+    }
+  } catch (error: any) {
+    console.error('Error adding selected anime to Sonarr:', error);
+    toast.error(`Failed to add anime: ${error.message}`);
+    return false;
+  }
+};
+
+// Add anime to Sonarr with lookup
+export const addAnimeToSonarr = async (anime: Anime, rootFolderPath?: string): Promise<boolean> => {
+  try {
+    const config = getSonarrConfig();
+    if (!config.connected) {
+      throw new Error('Sonarr is not connected');
+    }
+
+    // Search for the series first to get proper TVDb ID
+    const searchResults = await searchSonarrSeries(anime.title);
+    if (!searchResults.length) {
+      throw new Error('No matching series found in Sonarr');
+    }
+
+    // Find best match from search results
+    const series = searchResults.find(s => 
+      s.title.toLowerCase() === anime.title.toLowerCase() ||
+      (s.alternateTitles && s.alternateTitles.some(alt => 
+        alt.title.toLowerCase() === anime.title.toLowerCase()
+      ))
+    ) || searchResults[0];
+
+    // Use provided root folder path or default from config
+    const folderPath = rootFolderPath || config.defaultRootFolder || '/tv/';
+
+    const response = await axios.post(`${config.url}/api/v3/series`, {
+      title: series.title,
+      tvdbId: series.tvdbId,
+      titleSlug: series.titleSlug,
+      images: series.images,
+      qualityProfileId: 1, // Using default profile
+      seasonFolder: true,
+      monitored: true,
+      rootFolderPath: folderPath,
+      seriesType: 'anime',
+      addOptions: {
+        monitor: 'all',
+        searchForMissingEpisodes: true
+      }
+    }, {
+      headers: {
+        'X-Api-Key': config.apiKey,
+      },
+    });
+
     toast.success(`Added "${anime.title}" to Sonarr`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding anime to Sonarr:", error);
-    toast.error(`Failed to add "${anime.title}" to Sonarr`);
+    toast.error(`Failed to add "${anime.title}" to Sonarr: ${error.message}`);
     return false;
   }
 };
