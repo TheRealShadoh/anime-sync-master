@@ -4,6 +4,7 @@ import { Anime } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Play, Plus, Check, Loader2 } from 'lucide-react';
 import { useSonarr } from '@/hooks/useSonarr';
+import { useAnimeList } from '@/hooks/useAnimeList';
 
 interface AnimeBannerProps {
   anime: Anime;
@@ -17,10 +18,15 @@ const AnimeBanner: React.FC<AnimeBannerProps> = ({
   onToggleSelect 
 }) => {
   const { addToSonarr, isPending, isConnected } = useSonarr();
+  const { addToSelected } = useAnimeList();
 
   const handleAddToSonarr = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isConnected) {
+      // Mark as selected when adding to Sonarr
+      if (!isSelected) {
+        addToSelected(anime.id);
+      }
       await addToSonarr(anime);
     }
   };

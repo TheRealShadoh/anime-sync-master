@@ -185,6 +185,41 @@ export const useAnimeList = () => {
     }
   };
 
+  // Add anime to selected list (used when directly adding to Sonarr)
+  const addToSelected = (animeId: number) => {
+    // Only add if not already selected
+    if (!selectedAnime.has(animeId)) {
+      setSelectedAnime(prev => {
+        const newSet = new Set(prev);
+        newSet.add(animeId);
+        return newSet;
+      });
+      
+      // Update the anime objects in current and next seasons
+      if (currentSeason) {
+        setCurrentSeason({
+          ...currentSeason,
+          anime: currentSeason.anime.map(anime => 
+            anime.id === animeId 
+              ? { ...anime, selected: true } 
+              : anime
+          )
+        });
+      }
+      
+      if (nextSeason) {
+        setNextSeason({
+          ...nextSeason,
+          anime: nextSeason.anime.map(anime => 
+            anime.id === animeId 
+              ? { ...anime, selected: true } 
+              : anime
+          )
+        });
+      }
+    }
+  };
+
   // Check if an anime is selected
   const isSelected = (animeId: number) => {
     return selectedAnime.has(animeId);
@@ -249,6 +284,7 @@ export const useAnimeList = () => {
     loadNextSeason,
     loadSeason,
     toggleSelection,
+    addToSelected,
     isSelected,
     applyRules,
     getSelectedAnime

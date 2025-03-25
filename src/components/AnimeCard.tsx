@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, Plus, Star, Calendar, Play, Loader2 } from 'lucide-react';
 import { useSonarr } from '@/hooks/useSonarr';
+import { useAnimeList } from '@/hooks/useAnimeList';
 
 interface AnimeCardProps {
   anime: Anime;
@@ -25,6 +26,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
   isPending: externalIsPending
 }) => {
   const { addToSonarr, isPending: sonarrIsPending, isConnected } = useSonarr();
+  const { addToSelected } = useAnimeList();
   
   // Use external isPending if provided, otherwise use internal state
   const isPending = externalIsPending !== undefined ? externalIsPending : sonarrIsPending(anime.id);
@@ -32,6 +34,10 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
   const handleAddToSonarr = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isConnected) {
+      // Mark as selected when adding to Sonarr
+      if (!isSelected) {
+        addToSelected(anime.id);
+      }
       await addToSonarr(anime);
     }
   };
