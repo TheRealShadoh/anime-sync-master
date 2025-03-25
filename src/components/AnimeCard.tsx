@@ -111,7 +111,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
       </div>
       
       <CardContent className="p-4">
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           {anime.season && anime.year && (
             <Badge variant="outline" className="text-xs flex items-center gap-1">
               <Calendar className="h-3 w-3" />
@@ -124,6 +124,17 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
               {anime.studios[0]}
             </Badge>
           )}
+          
+          {/* Display up to 2 genre tags */}
+          {anime.genres && anime.genres.slice(0, 2).map((genre, index) => (
+            <Badge 
+              key={index} 
+              variant="secondary" 
+              className="text-xs bg-primary/20 hover:bg-primary/30"
+            >
+              {genre}
+            </Badge>
+          ))}
         </div>
         
         <h3 className="font-medium leading-tight line-clamp-2 h-[40px]">

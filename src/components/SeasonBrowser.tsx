@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAnimeList } from '@/hooks/useAnimeList';
 import AnimeCard from './AnimeCard';
 import AnimeBanner from './AnimeBanner';
+import AnimeFilter, { AnimeFilters } from './AnimeFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Anime } from '@/lib/types';
@@ -24,6 +25,11 @@ const SeasonBrowser: React.FC = () => {
   
   const [selectedTab, setSelectedTab] = useState('current');
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [filters, setFilters] = useState<AnimeFilters>({
+    genres: [],
+    seasons: [],
+    studios: []
+  });
   
   const handleRefresh = () => {
     if (selectedTab === 'current') {
@@ -33,9 +39,58 @@ const SeasonBrowser: React.FC = () => {
     }
   };
   
-  const featuredAnime = selectedTab === 'current' 
-    ? currentSeason?.anime[0]
-    : nextSeason?.anime[0];
+  // Apply filters to the anime list
+  const filteredAnime = useMemo(() => {
+    const animeList = selectedTab === 'current' 
+      ? currentSeason?.anime || []
+      : nextSeason?.anime || [];
+    
+    return animeList.filter(anime => {
+      // Genre filter
+      if (filters.genres.length > 0 && 
+          !anime.genres.some(genre => filters.genres.includes(genre))) {
+        return false;
+      }
+      
+      // Season filter
+      if (filters.seasons.length > 0 && 
+          anime.season && 
+          !filters.seasons.includes(anime.season)) {
+        return false;
+      }
+      
+      // Year filter
+      if (filters.year && anime.year !== filters.year) {
+        return false;
+      }
+      
+      // Studio filter
+      if (filters.studios.length > 0 && 
+          (!anime.studios || 
+           !anime.studios.some(studio => filters.studios.includes(studio)))) {
+        return false;
+      }
+      
+      // Score filter
+      if (filters.scoreAbove && 
+          (!anime.score || anime.score < filters.scoreAbove)) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [selectedTab, currentSeason, nextSeason, filters]);
+  
+  // Get featured anime based on filters and selected tab
+  const featuredAnime = useMemo(() => {
+    if (filteredAnime.length > 0) {
+      return filteredAnime[0];
+    }
+    
+    return selectedTab === 'current' 
+      ? currentSeason?.anime[0]
+      : nextSeason?.anime[0];
+  }, [filteredAnime, selectedTab, currentSeason, nextSeason]);
 
   return (
     <div className="w-full animate-fade-in">
@@ -88,6 +143,14 @@ const SeasonBrowser: React.FC = () => {
             </Button>
           </div>
           
+          {/* Filters */}
+          {(currentSeason?.anime.length > 0 || nextSeason?.anime.length > 0) && (
+            <AnimeFilter 
+              animeList={selectedTab === 'current' ? currentSeason?.anime || [] : nextSeason?.anime || []}
+              onFiltersChange={setFilters}
+            />
+          )}
+          
           <TabsContent value="current" className="mt-0">
             {isLoading && !currentSeason ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -95,14 +158,14 @@ const SeasonBrowser: React.FC = () => {
                   <AnimeCardSkeleton key={i} />
                 ))}
               </div>
-            ) : currentSeason?.anime.length === 0 ? (
+            ) : filteredAnime.length === 0 ? (
               <div className="text-center py-16">
-                <h3 className="text-xl font-medium">No anime found for this season</h3>
-                <p className="text-muted-foreground">Check back later or try a different season</p>
+                <h3 className="text-xl font-medium">No anime found with these filters</h3>
+                <p className="text-muted-foreground">Try adjusting your filters or check back later</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {currentSeason?.anime.map((anime) => (
+                {filteredAnime.map((anime) => (
                   <AnimeCard 
                     key={anime.id}
                     anime={anime}
@@ -122,14 +185,14 @@ const SeasonBrowser: React.FC = () => {
                   <AnimeCardSkeleton key={i} />
                 ))}
               </div>
-            ) : nextSeason?.anime.length === 0 ? (
+            ) : filteredAnime.length === 0 ? (
               <div className="text-center py-16">
-                <h3 className="text-xl font-medium">No anime found for next season</h3>
-                <p className="text-muted-foreground">Check back later</p>
+                <h3 className="text-xl font-medium">No anime found with these filters</h3>
+                <p className="text-muted-foreground">Try adjusting your filters or check back later</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {nextSeason?.anime.map((anime) => (
+                {filteredAnime.map((anime) => (
                   <AnimeCard 
                     key={anime.id}
                     anime={anime}

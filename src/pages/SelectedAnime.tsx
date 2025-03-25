@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import { useAnimeList } from '@/hooks/useAnimeList';
 import { useSonarr } from '@/hooks/useSonarr';
 import AnimeCard from '@/components/AnimeCard';
+import AnimeFilter, { AnimeFilters } from '@/components/AnimeFilter';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Anime } from '@/lib/types';
@@ -16,15 +17,22 @@ const SelectedAnime: React.FC = () => {
   const { getSelectedAnime, toggleSelection, isSelected } = useAnimeList();
   const { addToSonarr, isConnected, isPending, config } = useSonarr();
   const [selectedAnime, setSelectedAnime] = useState<Anime[]>([]);
+  const [filteredAnime, setFilteredAnime] = useState<Anime[]>([]);
   const [selectedAnimeDetail, setSelectedAnimeDetail] = useState<Anime | null>(null);
   const [sonarrSeries, setSonarrSeries] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [filters, setFilters] = useState<AnimeFilters>({
+    genres: [],
+    seasons: [],
+    studios: []
+  });
 
   // Load selected anime and Sonarr series on mount
   useEffect(() => {
     const loadAnime = () => {
       const anime = getSelectedAnime();
       setSelectedAnime(anime);
+      setFilteredAnime(anime);
     };
 
     loadAnime();
@@ -54,6 +62,7 @@ const SelectedAnime: React.FC = () => {
           }));
           
           setSelectedAnime(updatedSelectedAnime);
+          setFilteredAnime(updatedSelectedAnime);
           
           // Store IDs of anime in Sonarr for quick reference
           const inSonarrIds = updatedSelectedAnime
@@ -72,11 +81,55 @@ const SelectedAnime: React.FC = () => {
     fetchSonarrSeries();
   }, [getSelectedAnime, isConnected]);
 
+  // Apply filters when they change
+  useEffect(() => {
+    const applyFilters = () => {
+      const filtered = selectedAnime.filter(anime => {
+        // Genre filter
+        if (filters.genres.length > 0 && 
+            !anime.genres.some(genre => filters.genres.includes(genre))) {
+          return false;
+        }
+        
+        // Season filter
+        if (filters.seasons.length > 0 && 
+            anime.season && 
+            !filters.seasons.includes(anime.season)) {
+          return false;
+        }
+        
+        // Year filter
+        if (filters.year && anime.year !== filters.year) {
+          return false;
+        }
+        
+        // Studio filter
+        if (filters.studios.length > 0 && 
+            (!anime.studios || 
+             !anime.studios.some(studio => filters.studios.includes(studio)))) {
+          return false;
+        }
+        
+        // Score filter
+        if (filters.scoreAbove && 
+            (!anime.score || anime.score < filters.scoreAbove)) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      setFilteredAnime(filtered);
+    };
+    
+    applyFilters();
+  }, [selectedAnime, filters]);
+
   const handleAddAllToSonarr = async () => {
     if (!isConnected) return;
     
     // Filter out anime that are already in Sonarr
-    const animeToAdd = selectedAnime.filter(anime => !anime.inSonarr && !isPending(anime.id));
+    const animeToAdd = filteredAnime.filter(anime => !anime.inSonarr && !isPending(anime.id));
     
     setIsLoading(true);
     for (const anime of animeToAdd) {
@@ -135,7 +188,7 @@ const SelectedAnime: React.FC = () => {
               {isConnected && (
                 <Button 
                   onClick={handleAddAllToSonarr} 
-                  disabled={isLoading || selectedAnime.every(anime => anime.inSonarr || isPending(anime.id))}
+                  disabled={isLoading || filteredAnime.every(anime => anime.inSonarr || isPending(anime.id))}
                 >
                   {isLoading ? (
                     <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
@@ -156,19 +209,36 @@ const SelectedAnime: React.FC = () => {
               </Alert>
             )}
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {selectedAnime.map(anime => (
-                <AnimeCard 
-                  key={anime.id}
-                  anime={anime}
-                  isSelected={isSelected(anime.id)}
-                  onToggleSelect={() => toggleSelection(anime.id)}
-                  onClick={() => setSelectedAnimeDetail(anime)}
-                  inSonarr={isInSonarr(anime.id) || anime.inSonarr}
-                  isPending={isPending(anime.id)}
-                />
-              ))}
+            {/* Filter Component */}
+            <div className="mb-6">
+              <AnimeFilter 
+                animeList={selectedAnime}
+                onFiltersChange={setFilters}
+              />
             </div>
+            
+            {filteredAnime.length === 0 ? (
+              <div className="text-center py-16">
+                <h3 className="text-xl font-medium">No anime match the selected filters</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your filters or select different anime
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredAnime.map(anime => (
+                  <AnimeCard 
+                    key={anime.id}
+                    anime={anime}
+                    isSelected={isSelected(anime.id)}
+                    onToggleSelect={() => toggleSelection(anime.id)}
+                    onClick={() => setSelectedAnimeDetail(anime)}
+                    inSonarr={isInSonarr(anime.id) || anime.inSonarr}
+                    isPending={isPending(anime.id)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
         
