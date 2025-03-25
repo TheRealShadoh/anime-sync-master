@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { useAnimeList } from '@/hooks/useAnimeList';
 import { useSonarr } from '@/hooks/useSonarr';
@@ -7,22 +7,93 @@ import AnimeCard from '@/components/AnimeCard';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Anime } from '@/lib/types';
-import { Plus, CheckCircle2, AlertCircle, Star, Check } from 'lucide-react';
+import { Plus, CheckCircle2, AlertCircle, Star, Check, LoaderCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { getAllSonarrSeries } from '@/lib/api';
 
 const SelectedAnime: React.FC = () => {
   const { getSelectedAnime, toggleSelection, isSelected } = useAnimeList();
-  const { addToSonarr, isConnected } = useSonarr();
-  const selectedAnime = getSelectedAnime();
+  const { addToSonarr, isConnected, isPending, config } = useSonarr();
+  const [selectedAnime, setSelectedAnime] = useState<Anime[]>([]);
   const [selectedAnimeDetail, setSelectedAnimeDetail] = useState<Anime | null>(null);
+  const [sonarrSeries, setSonarrSeries] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load selected anime and Sonarr series on mount
+  useEffect(() => {
+    const loadAnime = () => {
+      const anime = getSelectedAnime();
+      setSelectedAnime(anime);
+    };
+
+    loadAnime();
+
+    // Fetch Sonarr series and check if selected anime are already in Sonarr
+    const fetchSonarrSeries = async () => {
+      if (isConnected) {
+        setIsLoading(true);
+        try {
+          const series = await getAllSonarrSeries();
+          // Extract titles to check against anime titles
+          const titles = series.map(s => s.title.toLowerCase());
+          const altTitles = series.flatMap(s => 
+            s.alternateTitles?.map(alt => alt.title.toLowerCase()) || []
+          );
+          
+          // Combined list of all titles
+          const allTitles = [...titles, ...altTitles];
+          
+          // Mark anime that are already in Sonarr
+          const updatedSelectedAnime = getSelectedAnime().map(anime => ({
+            ...anime,
+            inSonarr: allTitles.some(title => 
+              title === anime.title.toLowerCase() || 
+              title === anime.alternativeTitles?.english?.toLowerCase()
+            )
+          }));
+          
+          setSelectedAnime(updatedSelectedAnime);
+          
+          // Store IDs of anime in Sonarr for quick reference
+          const inSonarrIds = updatedSelectedAnime
+            .filter(anime => anime.inSonarr)
+            .map(anime => anime.id);
+            
+          setSonarrSeries(inSonarrIds);
+        } catch (error) {
+          console.error('Error fetching Sonarr series:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchSonarrSeries();
+  }, [getSelectedAnime, isConnected]);
 
   const handleAddAllToSonarr = async () => {
     if (!isConnected) return;
     
-    for (const anime of selectedAnime) {
-      await addToSonarr(anime);
+    // Filter out anime that are already in Sonarr
+    const animeToAdd = selectedAnime.filter(anime => !anime.inSonarr && !isPending(anime.id));
+    
+    setIsLoading(true);
+    for (const anime of animeToAdd) {
+      const success = await addToSonarr(anime);
+      if (success) {
+        setSonarrSeries(prev => [...prev, anime.id]);
+        // Update the selected anime list
+        setSelectedAnime(prev => 
+          prev.map(a => a.id === anime.id ? { ...a, inSonarr: true } : a)
+        );
+      }
     }
+    setIsLoading(false);
+  };
+
+  const isInSonarr = (animeId: number) => {
+    return sonarrSeries.includes(animeId);
   };
 
   return (
@@ -62,8 +133,15 @@ const SelectedAnime: React.FC = () => {
               </div>
               
               {isConnected && (
-                <Button onClick={handleAddAllToSonarr}>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                <Button 
+                  onClick={handleAddAllToSonarr} 
+                  disabled={isLoading || selectedAnime.every(anime => anime.inSonarr || isPending(anime.id))}
+                >
+                  {isLoading ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
                   Add All to Sonarr
                 </Button>
               )}
@@ -86,6 +164,8 @@ const SelectedAnime: React.FC = () => {
                   isSelected={isSelected(anime.id)}
                   onToggleSelect={() => toggleSelection(anime.id)}
                   onClick={() => setSelectedAnimeDetail(anime)}
+                  inSonarr={isInSonarr(anime.id) || anime.inSonarr}
+                  isPending={isPending(anime.id)}
                 />
               ))}
             </div>
@@ -147,6 +227,25 @@ const SelectedAnime: React.FC = () => {
                     <p className="text-sm">{selectedAnimeDetail.synopsis}</p>
                     
                     <div className="flex gap-3 pt-4">
+                      {isInSonarr(selectedAnimeDetail.id) || selectedAnimeDetail.inSonarr ? (
+                        <Button variant="secondary" disabled>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          In Sonarr
+                        </Button>
+                      ) : isPending(selectedAnimeDetail.id) ? (
+                        <Button variant="secondary" disabled>
+                          <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                          Adding to Sonarr...
+                        </Button>
+                      ) : isConnected ? (
+                        <Button 
+                          onClick={() => addToSonarr(selectedAnimeDetail)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add to Sonarr
+                        </Button>
+                      ) : null}
+                      
                       <Button 
                         variant={isSelected(selectedAnimeDetail.id) ? "secondary" : "default"} 
                         onClick={() => toggleSelection(selectedAnimeDetail.id)}
