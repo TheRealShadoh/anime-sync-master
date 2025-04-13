@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useAnimeStorage } from '@/hooks/useAnimeStorage';
 import { useAnimeFilters } from '@/hooks/useAnimeFilters';
+import { getSeasonFromDB, saveSeasonToDB, getSeasonId } from '@/lib/db';
 
 // Create the context
 type AnimeListContextType = {
@@ -54,19 +55,43 @@ export const AnimeListProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     loadCurrentSeason();
     loadNextSeason();
-    loadSelectedAnime();
   }, []);
 
   // Load current season anime
   const loadCurrentSeason = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getCurrentSeasonAnime();
+      // Check if we have the current season in the database
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
       
-      // If MAL is connected, fetch additional authorized anime
-      if (malConnected) {
-        const additionalAnime = await fetchMoreAnime(data.season, data.year);
-        data.anime = [...data.anime, ...additionalAnime];
+      let seasonName: Season;
+      const month = currentDate.getMonth();
+      if (month >= 0 && month < 3) seasonName = 'winter';
+      else if (month >= 3 && month < 6) seasonName = 'spring';
+      else if (month >= 6 && month < 9) seasonName = 'summer';
+      else seasonName = 'fall';
+      
+      const seasonId = getSeasonId(seasonName, currentYear);
+      const cachedSeason = await getSeasonFromDB(seasonId);
+      
+      let data: SeasonData;
+      
+      if (cachedSeason) {
+        console.log('Loading current season from database');
+        data = cachedSeason;
+      } else {
+        console.log('Fetching current season from API');
+        data = await getCurrentSeasonAnime();
+        
+        // If MAL is connected, fetch additional authorized anime
+        if (malConnected) {
+          const additionalAnime = await fetchMoreAnime(data.season, data.year);
+          data.anime = [...data.anime, ...additionalAnime];
+        }
+        
+        // Save to database
+        await saveSeasonToDB(seasonId, data);
       }
       
       // Mark anime as selected if they're in the selectedAnime set
@@ -107,12 +132,45 @@ export const AnimeListProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const loadNextSeason = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getNextSeasonAnime();
+      // Determine next season
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const month = currentDate.getMonth();
       
-      // If MAL is connected, fetch additional authorized anime
-      if (malConnected) {
-        const additionalAnime = await fetchMoreAnime(data.season, data.year);
-        data.anime = [...data.anime, ...additionalAnime];
+      let nextSeasonName: Season;
+      let nextYear = currentYear;
+      
+      if (month >= 0 && month < 3) {
+        nextSeasonName = 'spring';
+      } else if (month >= 3 && month < 6) {
+        nextSeasonName = 'summer';
+      } else if (month >= 6 && month < 9) {
+        nextSeasonName = 'fall';
+      } else {
+        nextSeasonName = 'winter';
+        nextYear = currentYear + 1;
+      }
+      
+      const seasonId = getSeasonId(nextSeasonName, nextYear);
+      const cachedSeason = await getSeasonFromDB(seasonId);
+      
+      let data: SeasonData;
+      
+      if (cachedSeason) {
+        console.log('Loading next season from database');
+        data = cachedSeason;
+      } else {
+        console.log('Fetching next season from API');
+        data = await getNextSeasonAnime();
+        
+        // If MAL is connected, fetch additional authorized anime
+        if (malConnected) {
+          const additionalAnime = await fetchMoreAnime(data.season, data.year);
+          data.anime = [...data.anime, ...additionalAnime];
+        }
+        
+        // Save to database
+        await saveSeasonToDB(seasonId, data);
       }
       
       // Mark anime as selected if they're in the selectedAnime set
@@ -153,12 +211,28 @@ export const AnimeListProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const loadSeason = async (season: Season, year: number) => {
     setIsLoading(true);
     try {
-      const data = await getSeasonalAnime(season, year);
+      const seasonId = getSeasonId(season, year);
+      const cachedSeason = await getSeasonFromDB(seasonId);
+      
+      let data: SeasonData;
+      
+      if (cachedSeason) {
+        console.log(`Loading ${season} ${year} season from database`);
+        data = cachedSeason;
+      } else {
+        console.log(`Fetching ${season} ${year} season from API`);
+        data = await getSeasonalAnime(season, year);
+        
+        // Save to database
+        await saveSeasonToDB(seasonId, data);
+      }
+      
       // Apply auto-selection rules
       const processedData = {
         ...data,
         anime: applyAutoRules(data.anime)
       };
+      
       return processedData;
     } catch (error) {
       console.error('Error loading season anime:', error);
